@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Númera – App</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --ink: #0d1117; --ink-mid: #3a3d45; --ink-soft: #6b7280;
+      --surface: #ffffff; --surface-alt: #f7f7f5;
+      --lime: #99b9ff; --lime-dim: #7aa3f5; --lime-bg: #eaf0ff;
+      --purple: #5b4bdd; --purple-soft: #ede9ff;
+      --border: rgba(13,17,23,0.09); --radius: 14px; --radius-sm: 9px;
+      --danger: #e24b4a; --danger-bg: #fff0f0;
+      --success: #1d9e75; --success-bg: #e1f5ee;
+      --header-bg: #e0ceff;
+      --orange: #f97316; --orange-bg: #fff7ed;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Space Grotesk', sans-serif; background: var(--surface-alt); color: var(--ink); line-height: 1.5; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+
+    /* ===== LOGIN SCREEN ===== */
+    #login-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #e0ceff 0%, #eaf0ff 100%);
+      padding: 20px;
+    }
+    .login-box {
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 8px 40px rgba(91,75,221,0.12);
+    }
+    .login-logo {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 22px; font-weight: 700; letter-spacing: -0.5px;
+      margin-bottom: 28px;
+    }
+    .login-logo span { width: 10px; height: 10px; background: var(--lime); border-radius: 50%; }
+    .login-tabs {
+      display: flex; gap: 4px; background: var(--surface-alt);
+      border-radius: var(--radius-sm); padding: 4px; margin-bottom: 24px;
+    }
+    .login-tab {
+      flex: 1; padding: 8px; border-radius: 7px; border: none;
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      cursor: pointer; color: var(--ink-soft); background: transparent;
+      transition: all 0.15s;
+    }
+    .login-tab.active { background: var(--surface); color: var(--purple); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .login-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .login-sub { font-size: 13px; color: var(--ink-soft); margin-bottom: 20px; }
+    .login-form-section { display: none; }
+    .login-form-section.active { display: block; }
+
+    /* ===== APP SHELL ===== */
+    #app-shell { display: none; }
+    #app-shell.visible { display: block; }
+
+    /* NAV */
+    nav { background: var(--header-bg); padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.08); position: sticky; top: 0; z-index: 100; }
+    .nav-logo { color: var(--ink); font-size: 18px; font-weight: 700; letter-spacing: -0.5px; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .nav-logo span { width: 8px; height: 8px; background: var(--lime); border-radius: 50%; }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .nav-user-badge {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--ink-mid);
+    }
+    .nav-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+    }
+    .nav-avatar.admin { background: var(--purple); color: #fff; }
+    .nav-avatar.seller { background: var(--lime); color: #1a2e6b; }
+    .nav-role-badge {
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 100px;
+    }
+    .nav-role-badge.admin { background: var(--purple-soft); color: var(--purple); }
+    .nav-role-badge.seller { background: var(--lime-bg); color: #2a47a8; }
+    .btn-logout { background: none; border: 1.5px solid var(--border); padding: 5px 12px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; cursor: pointer; color: var(--ink-soft); font-family: inherit; transition: all 0.13s; }
+    .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* LAYOUT */
+    .app { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 56px); }
+    aside { background: var(--surface); border-right: 1px solid var(--border); padding: 20px 12px; display: flex; flex-direction: column; gap: 4px; }
+    .sidebar-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ink-soft); padding: 12px 8px 6px; }
+    .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; color: var(--ink-mid); cursor: pointer; transition: background 0.12s, color 0.12s; border: none; background: none; width: 100%; text-align: left; }
+    .sidebar-item:hover { background: var(--surface-alt); }
+    .sidebar-item.active { background: var(--lime-bg); color: #2a47a8; }
+    .sidebar-item svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; flex-shrink: 0; }
+    .badge-count { margin-left: auto; background: var(--lime); color: #1a2e6b; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 100px; }
+    .sidebar-divider { height: 1px; background: var(--border); margin: 8px 0; }
+
+    /* MAIN */
+    main { padding: 28px 32px; overflow-y: auto; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* PAGE HEADER */
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .page-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .page-sub { font-size: 14px; color: var(--ink-soft); margin-top: 2px; }
+
+    /* BUTTONS */
+    .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.13s; border: none; font-family: inherit; }
+    .btn-primary { background: var(--lime); color: var(--ink); }
+    .btn-primary:hover { background: var(--lime-dim); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(153,185,255,0.4); }
+    .btn-dark { background: var(--ink); color: #fff; }
+    .btn-dark:hover { background: var(--purple); }
+    .btn-ghost { background: transparent; color: var(--ink-mid); border: 1.5px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--purple); color: var(--purple); }
+    .btn-danger { background: var(--danger-bg); color: var(--danger); border: none; }
+    .btn-danger:hover { background: #ffe0e0; }
+    .btn-purple { background: var(--purple); color: #fff; }
+    .btn-purple:hover { background: #4a3bc4; }
+    .btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    /* CARDS */
+    .card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px 24px; }
+
+    /* STATS GRID */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+    .stat-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 16px 20px; }
+    .stat-label { font-size: 12px; color: var(--ink-soft); font-weight: 500; margin-bottom: 6px; }
+    .stat-value { font-size: 26px; font-weight: 700; letter-spacing: -1px; }
+    .stat-value.lime { color: #2a47a8; }
+    .stat-value.purple { color: var(--purple); }
+    .stat-value.orange { color: var(--orange); }
+
+    /* TABLE */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--ink-soft); padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--ink-mid); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface-alt); }
+    .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 100px; }
+    .tag-paid { background: var(--success-bg); color: #085041; }
+    .tag-pending { background: #fff8e1; color: #633806; }
+    .tag-cancelled { background: var(--danger-bg); color: #791f1f; }
+    .tag-admin { background: var(--purple-soft); color: var(--purple); }
+    .tag-seller { background: var(--lime-bg); color: #2a47a8; }
+    .num-badge { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; background: var(--surface-alt); padding: 3px 8px; border-radius: 6px; color: var(--ink); }
+
+    /* FORM */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: 13px; font-weight: 600; color: var(--ink-mid); }
+    input, select, textarea { width: 100%; padding: 9px 12px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); font-family: inherit; font-size: 14px; color: var(--ink); background: var(--surface); outline: none; transition: border-color 0.15s; }
+    input:focus, select:focus, textarea:focus { border-color: var(--purple); }
+    textarea { resize: vertical; min-height: 70px; }
+    .form-hint { font-size: 12px; color: var(--ink-soft); }
+
+    /* MODAL */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(13,17,23,0.55); z-index: 200; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--surface); border-radius: 18px; padding: 28px 32px; max-width: 520px; width: calc(100% - 32px); max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .modal-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+    .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--ink-soft); line-height: 1; padding: 4px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+    /* TICKET */
+    .ticket { background: var(--ink); border-radius: 16px; padding: 22px; color: #fff; max-width: 280px; margin: 0 auto; }
+    .ticket-num { font-family: 'DM Mono', monospace; font-size: 44px; font-weight: 500; color: var(--lime); letter-spacing: -2px; text-shadow: 0 0 20px rgba(153,185,255,0.4); }
+    .ticket-lbl { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 16px; }
+    .ticket-divider { border: none; border-top: 1px dashed rgba(255,255,255,0.15); margin: 14px 0; }
+    .ticket-meta { display: flex; justify-content: space-between; font-size: 12px; color: rgba(255,255,255,0.5); }
+    .ticket-meta strong { display: block; color: #fff; font-size: 13px; margin-top: 2px; }
+    .ticket-qr { background: #fff; border-radius: 6px; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; margin-top: 14px; }
+    .ticket-tag { display: inline-flex; align-items: center; gap: 4px; background: var(--lime); color: #1a2e6b; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 100px; margin-top: 10px; }
+
+    /* SORTEIO */
+    .draw-area { text-align: center; padding: 40px 20px; }
+    .draw-circle { width: 180px; height: 180px; border-radius: 50%; border: 3px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 24px auto; background: var(--ink); }
+    .draw-circle .num { font-family: 'DM Mono', monospace; font-size: 54px; font-weight: 500; color: var(--lime); letter-spacing: -3px; line-height: 1; }
+    .draw-circle .sub { font-size: 10px; color: rgba(255,255,255,0.3); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-top: 6px; }
+    .winner-box { background: var(--lime-bg); border: 1.5px solid #99b9ff; border-radius: var(--radius); padding: 16px 20px; display: inline-flex; align-items: center; gap: 14px; margin: 16px auto; }
+    .winner-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--lime); color: #1a2e6b; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+    .winner-name { font-size: 16px; font-weight: 700; }
+    .winner-detail { font-size: 12px; color: var(--ink-soft); font-family: 'DM Mono', monospace; }
+
+    /* RIFAS LIST */
+    .rifa-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .rifa-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
+    .rifa-card:hover { border-color: var(--purple); transform: translateY(-2px); }
+    .rc-prize { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .rc-meta { font-size: 12px; color: var(--ink-soft); margin-bottom: 14px; }
+    .rc-bar-wrap { background: var(--surface-alt); border-radius: 100px; height: 6px; overflow: hidden; margin-bottom: 6px; }
+    .rc-bar { background: var(--lime); height: 6px; border-radius: 100px; transition: width 0.4s; }
+    .rc-stats { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-soft); }
+    .rc-value { font-size: 15px; font-weight: 700; color: #2a47a8; margin-top: 10px; }
+
+    /* ALERT */
+    .alert { border-radius: var(--radius-sm); padding: 12px 16px; font-size: 14px; margin-bottom: 16px; display: none; }
+    .alert.show { display: block; }
+    .alert-success { background: var(--success-bg); color: #085041; border: 1px solid #9fe1cb; }
+    .alert-danger { background: var(--danger-bg); color: #791f1f; border: 1px solid #f09595; }
+
+    /* EMPTY STATE */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--ink-soft); }
+    .empty-state svg { width: 48px; height: 48px; stroke: var(--border); fill: none; stroke-width: 1.5; margin: 0 auto 16px; display: block; }
+    .empty-state p { font-size: 14px; }
+
+    /* SEARCH */
+    .search-row { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; }
+    .search-input { flex: 1; }
+
+    /* RANGE PICKER */
+    .range-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 12px; }
+    .range-option {
+      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      padding: 12px; cursor: pointer; transition: all 0.15s;
+      text-align: center; background: var(--surface);
+    }
+    .range-option:hover { border-color: var(--purple); }
+    .range-option.selected { border-color: var(--purple); background: var(--purple-soft); }
+    .range-option.taken { border-color: var(--danger); background: var(--danger-bg); cursor: not-allowed; opacity: 0.6; }
+    .range-label { font-size: 13px; font-weight: 700; color: var(--ink); }
+    .range-sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+    .range-taken-by { font-size: 10px; color: var(--danger); font-weight: 600; margin-top: 4px; }
+
+    /* SELLER DASHBOARD */
+    .seller-quota-box {
+      background: linear-gradient(135deg, var(--purple) 0%, #4a3bc4 100%);
+      border-radius: var(--radius); padding: 24px; color: #fff; margin-bottom: 20px;
+    }
+    .sqb-label { font-size: 12px; font-weight: 600; opacity: 0.7; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .sqb-range { font-family: 'DM Mono', monospace; font-size: 32px; font-weight: 500; letter-spacing: -1px; color: var(--lime); }
+    .sqb-info { font-size: 13px; opacity: 0.75; margin-top: 8px; }
+
+    /* SELLERS PAGE */
+    .seller-card {
+      background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);
+      padding: 16px 20px; display: flex; align-items: center; gap: 14px;
+    }
+    .seller-av { width: 40px; height: 40px; border-radius: 50%; background: var(--lime); color: #1a2e6b; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .seller-info { flex: 1; }
+    .seller-name { font-size: 15px; font-weight: 700; }
+    .seller-meta { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+    .sellers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+
+    /* RESPONSIVE */
+    @media (max-width: 700px) {
+      .app { grid-template-columns: 1fr; }
+      aside { display: flex; flex-direction: row; overflow-x: auto; padding: 8px; border-right: none; border-bottom: 1px solid var(--border); gap: 2px; }
+      .sidebar-label { display: none; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      main { padding: 16px; }
+      .nav-right .nav-user-badge span:not(.nav-avatar) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo"><span></span> Númera</div>
+    <div class="login-tabs">
+      <button class="login-tab active" onclick="switchLoginTab('admin')">Administrador</button>
+      <button class="login-tab" onclick="switchLoginTab('seller')">Vendedor</button>
+    </div>
+
+    <!-- Admin Login -->
+    <div class="login-form-section active" id="login-admin">
+      <div class="login-title">Acesso administrativo</div>
+      <div class="login-sub">Entre com sua conta de administrador</div>
+      <div class="alert alert-danger" id="alert-login-admin"></div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label>Usuário</label>
+        <input type="text" id="admin-user" placeholder="admin" />
+      </div>
+      <div class="form-group" style="margin-bottom:20px;">
+        <label>Senha</label>
+        <input type="password" id="admin-pass" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin('admin')" />
+      </div>
+      <button class="btn btn-purple" style="width:100%;justify-content:center;" onclick="doLogin('admin')">Entrar como Admin</button>
+    </div>
+
+    <!-- Seller Login -->
+    <div class="login-form-section" id="login-seller">
+      <div class="login-title">Acesso de vendedor</div>
+      <div class="login-sub">Entre com seu usuário e senha de vendedor</div>
+      <div class="alert alert-danger" id="alert-login-seller"></div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label>Usuário</label>
+        <input type="text" id="seller-user" placeholder="Seu usuário" />
+      </div>
+      <div class="form-group" style="margin-bottom:20px;">
+        <label>Senha</label>
+        <input type="password" id="seller-pass" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin('seller')" />
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;color:var(--ink);" onclick="doLogin('seller')">Entrar como Vendedor</button>
+      <div style="font-size:12px;color:var(--ink-soft);text-align:center;margin-top:12px;">Não tem conta? Peça ao administrador para criar.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== APP SHELL ===== -->
+<div id="app-shell">
+
+<nav>
+  <div class="nav-logo" onclick="goPage('dashboard')">
+    <span></span> Númera
+  </div>
+  <div class="nav-right">
+    <div class="nav-user-badge">
+      <div class="nav-avatar" id="nav-avatar">?</div>
+      <span id="nav-username">–</span>
+      <span class="nav-role-badge" id="nav-role-badge">–</span>
+    </div>
+    <button class="btn-logout" onclick="doLogout()">Sair</button>
+  </div>
+</nav>
+
+<div class="app">
+  <aside id="sidebar">
+    <div class="sidebar-label">Menu</div>
+    <button class="sidebar-item active" onclick="goPage('dashboard')" id="sb-dashboard">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="sidebar-item" onclick="goPage('rifas')" id="sb-rifas">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg>
+      Rifas
+      <span class="badge-count" id="badge-rifas">0</span>
+    </button>
+    <button class="sidebar-item" onclick="goPage('participantes')" id="sb-participantes">
+      <svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M19 7v6M22 10h-6"/></svg>
+      Participantes
+    </button>
+    <button class="sidebar-item" onclick="goPage('tickets')" id="sb-tickets">
+      <svg viewBox="0 0 24 24"><path d="M3 9v-.5A1.5 1.5 0 014.5 7h15A1.5 1.5 0 0121 8.5V9a2 2 0 000 4v.5a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 13.5V13a2 2 0 000-4z"/></svg>
+      Cotas & QR
+    </button>
+    <!-- Admin-only items -->
+    <div id="sb-admin-section">
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-label">Administração</div>
+      <button class="sidebar-item" onclick="goPage('sorteio')" id="sb-sorteio">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
+        Sorteio
+      </button>
+      <button class="sidebar-item" onclick="goPage('vendedores')" id="sb-vendedores">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        Vendedores
+        <span class="badge-count" id="badge-sellers">0</span>
+      </button>
+    </div>
+  </aside>
+
+  <main>
+
+    <!-- DASHBOARD (Admin) -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <div class="page-title" id="dash-title">Painel geral</div>
+          <div class="page-sub" id="dash-sub">Carregando...</div>
+        </div>
+        <button class="btn btn-primary" id="dash-nova-rifa-btn" onclick="openModal('modal-nova-rifa')">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Nova rifa
+        </button>
+      </div>
+
+      <!-- Admin stats -->
+      <div id="admin-dash">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Rifas ativas</div><div class="stat-value" id="stat-rifas">0</div></div>
+          <div class="stat-card"><div class="stat-label">Cotas vendidas</div><div class="stat-value lime" id="stat-vendidas">0</div></div>
+          <div class="stat-card"><div class="stat-label">Pagamentos confirmados</div><div class="stat-value purple" id="stat-pagos">0</div></div>
+          <div class="stat-card"><div class="stat-label">Total arrecadado</div><div class="stat-value" id="stat-total">R$ 0</div></div>
+        </div>
+        <div class="card">
+          <div style="font-size:15px;font-weight:700;margin-bottom:16px;">Rifas recentes</div>
+          <div id="dash-rifas-list"></div>
+        </div>
+      </div>
+
+      <!-- Seller dash -->
+      <div id="seller-dash" style="display:none;">
+        <div id="seller-quota-display"></div>
+        <div class="stats-grid" style="grid-template-columns: repeat(3,1fr);">
+          <div class="stat-card"><div class="stat-label">Minhas cotas vendidas</div><div class="stat-value lime" id="seller-stat-vendidas">0</div></div>
+          <div class="stat-card"><div class="stat-label">Pagamentos confirmados</div><div class="stat-value purple" id="seller-stat-pagos">0</div></div>
+          <div class="stat-card"><div class="stat-label">Pendentes</div><div class="stat-value orange" id="seller-stat-pendentes">0</div></div>
+        </div>
+        <div class="card">
+          <div style="font-size:15px;font-weight:700;margin-bottom:16px;">Minhas vendas recentes</div>
+          <div id="seller-dash-sales"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIFAS -->
+    <div class="page" id="page-rifas">
+      <div class="page-header">
+        <div><div class="page-title">Rifas</div><div class="page-sub">Gerencie as rifas ativas</div></div>
+        <button class="btn btn-primary" id="nova-rifa-btn2" onclick="openModal('modal-nova-rifa')">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Nova rifa
+        </button>
+      </div>
+      <div class="rifa-cards" id="rifas-list">
+        <div class="empty-state" style="grid-column:1/-1"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg><p>Nenhuma rifa ainda.</p></div>
+      </div>
+    </div>
+
+    <!-- PARTICIPANTES -->
+    <div class="page" id="page-participantes">
+      <div class="page-header">
+        <div><div class="page-title">Participantes</div><div class="page-sub" id="part-sub">Selecione uma rifa</div></div>
+        <button class="btn btn-primary" onclick="openModal('modal-add-part')">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Adicionar
+        </button>
+      </div>
+      <div class="search-row">
+        <input class="search-input" type="text" id="search-part" placeholder="Buscar por nome ou número..." oninput="renderPart()">
+        <select id="filter-rifa" onchange="renderPart()"><option value="">Todas as rifas</option></select>
+        <select id="filter-status" onchange="renderPart()">
+          <option value="">Todos</option>
+          <option value="pago">Pagos</option>
+          <option value="pendente">Pendentes</option>
+        </select>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Cota</th><th>Participante</th><th>Rifa</th><th>Vendedor</th><th>Status</th><th>Ações</th></tr>
+            </thead>
+            <tbody id="part-tbody"><tr><td colspan="6" style="text-align:center;color:var(--ink-soft);padding:32px;">Nenhum participante cadastrado.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TICKETS -->
+    <div class="page" id="page-tickets">
+      <div class="page-header">
+        <div><div class="page-title">Cotas & QR Codes</div><div class="page-sub">Visualize e imprima os bilhetes</div></div>
+      </div>
+      <div class="search-row">
+        <select id="ticket-rifa-select" onchange="renderTickets()"><option value="">Selecione uma rifa</option></select>
+      </div>
+      <div id="tickets-container">
+        <div class="empty-state"><svg viewBox="0 0 24 24"><path d="M3 9v-.5A1.5 1.5 0 014.5 7h15A1.5 1.5 0 0121 8.5V9a2 2 0 000 4v.5a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 13.5V13a2 2 0 000-4z"/></svg><p>Selecione uma rifa.</p></div>
+      </div>
+    </div>
+
+    <!-- SORTEIO (admin only) -->
+    <div class="page" id="page-sorteio">
+      <div class="page-header">
+        <div><div class="page-title">Realizar sorteio</div><div class="page-sub">Apenas cotas com pagamento confirmado participam</div></div>
+      </div>
+      <div class="card" style="max-width:600px;margin:0 auto;">
+        <div class="form-group" style="margin-bottom:20px;">
+          <label>Selecionar rifa</label>
+          <select id="draw-rifa-select" onchange="updateDrawInfo()"><option value="">Escolha a rifa</option></select>
+        </div>
+        <div id="draw-info" style="display:none;">
+          <div class="stats-grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+            <div class="stat-card"><div class="stat-label">Cotas elegíveis (pagas)</div><div class="stat-value lime" id="draw-eligible">0</div></div>
+            <div class="stat-card"><div class="stat-label">Cotas pendentes</div><div class="stat-value" id="draw-pending">0</div></div>
+          </div>
+        </div>
+        <div class="draw-area">
+          <div class="draw-circle" id="draw-circle">
+            <div class="num" id="draw-num">?</div>
+            <div class="sub">número vencedor</div>
+          </div>
+          <div id="draw-winner" style="display:none;">
+            <div class="winner-box">
+              <div class="winner-avatar" id="winner-av">??</div>
+              <div><div class="winner-name" id="winner-name">–</div><div class="winner-detail" id="winner-detail">–</div></div>
+            </div>
+          </div>
+          <div id="draw-no-eligible" style="display:none;color:var(--danger);font-size:14px;margin-bottom:16px;">Nenhuma cota paga encontrada nesta rifa.</div>
+          <button class="btn btn-dark" style="margin-top:16px;" onclick="realizarSorteio()">
+            <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2"><path d="M21 12a9 9 0 11-9-9"/><path d="M21 3v9h-9"/></svg>
+            Sortear agora
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VENDEDORES (admin only) -->
+    <div class="page" id="page-vendedores">
+      <div class="page-header">
+        <div><div class="page-title">Vendedores</div><div class="page-sub">Gerencie as contas dos vendedores</div></div>
+        <button class="btn btn-primary" onclick="openModal('modal-novo-vendedor')">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Novo vendedor
+        </button>
+      </div>
+      <div id="sellers-list" class="sellers-grid">
+        <div class="empty-state" style="grid-column:1/-1"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><p>Nenhum vendedor cadastrado ainda.</p></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+</div><!-- #app-shell -->
+
+<!-- MODAL: Nova rifa -->
+<div class="modal-overlay" id="modal-nova-rifa">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Nova rifa</div>
+      <button class="modal-close" onclick="closeModal('modal-nova-rifa')">×</button>
+    </div>
+    <div class="alert alert-success" id="alert-rifa"></div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Prêmio</label><input type="text" id="rifa-premio" placeholder="Ex: Moto 0km, TV 65 polegadas..." /></div>
+      <div class="form-group"><label>Valor por cota (R$)</label><input type="number" id="rifa-valor" placeholder="25.00" min="1" step="0.01" /></div>
+      <div class="form-group"><label>Quantidade de cotas</label><input type="number" id="rifa-qtd" placeholder="100" min="10" max="10000" /></div>
+      <div class="form-group full"><label>Descrição (opcional)</label><textarea id="rifa-desc" placeholder="Informações extras..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-nova-rifa')">Cancelar</button>
+      <button class="btn btn-primary" onclick="criarRifa()">Criar rifa</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Adicionar participante -->
+<div class="modal-overlay" id="modal-add-part">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Adicionar participante</div>
+      <button class="modal-close" onclick="closeModal('modal-add-part')">×</button>
+    </div>
+    <div class="alert alert-success" id="alert-part"></div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Rifa</label><select id="part-rifa-select" onchange="onRifaSelectChange()"></select></div>
+      <div class="form-group full"><label>Nome do participante</label><input type="text" id="part-nome" placeholder="Nome completo" /></div>
+      <div class="form-group">
+        <label>Número da cota</label>
+        <input type="number" id="part-num" placeholder="Ex: 42" />
+        <span class="form-hint" id="part-num-hint"></span>
+      </div>
+      <div class="form-group"><label>Status</label><select id="part-status"><option value="pago">Pago</option><option value="pendente">Pendente</option></select></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-part')">Cancelar</button>
+      <button class="btn btn-primary" onclick="addParticipante()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Ver ticket -->
+<div class="modal-overlay" id="modal-ticket">
+  <div class="modal" style="text-align:center;">
+    <div class="modal-header">
+      <div class="modal-title">Bilhete da cota</div>
+      <button class="modal-close" onclick="closeModal('modal-ticket')">×</button>
+    </div>
+    <div id="ticket-render"></div>
+    <div class="modal-footer" style="justify-content:center;">
+      <button class="btn btn-ghost" onclick="closeModal('modal-ticket')">Fechar</button>
+      <button class="btn btn-dark" onclick="window.print()">Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Novo vendedor -->
+<div class="modal-overlay" id="modal-novo-vendedor">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Novo vendedor</div>
+      <button class="modal-close" onclick="closeModal('modal-novo-vendedor')">×</button>
+    </div>
+    <div class="alert alert-danger" id="alert-novo-vendedor"></div>
+    <div class="alert alert-success" id="alert-novo-vendedor-ok"></div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Nome completo</label><input type="text" id="nv-nome" placeholder="Nome do vendedor" /></div>
+      <div class="form-group"><label>Usuário (login)</label><input type="text" id="nv-user" placeholder="Ex: joao" /></div>
+      <div class="form-group"><label>Senha</label><input type="password" id="nv-pass" placeholder="Mínimo 4 caracteres" /></div>
+
+      <div class="form-group full">
+        <label>Rifa para atribuir faixa de cotas</label>
+        <select id="nv-rifa" onchange="renderRangeOptions()"><option value="">Selecione uma rifa</option></select>
+      </div>
+      <div class="form-group full" id="nv-range-section" style="display:none;">
+        <label>Faixa de cotas do vendedor</label>
+        <div class="form-hint" style="margin-bottom:8px;">Selecione a faixa que este vendedor irá gerenciar</div>
+        <div class="range-grid" id="nv-range-options"></div>
+        <input type="hidden" id="nv-range-selected" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-novo-vendedor')">Cancelar</button>
+      <button class="btn btn-primary" onclick="criarVendedor()">Criar conta</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Editar vendedor -->
+<div class="modal-overlay" id="modal-edit-vendedor">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Editar vendedor</div>
+      <button class="modal-close" onclick="closeModal('modal-edit-vendedor')">×</button>
+    </div>
+    <div class="alert alert-danger" id="alert-edit-vendedor"></div>
+    <div class="alert alert-success" id="alert-edit-vendedor-ok"></div>
+    <input type="hidden" id="ev-id" />
+    <div class="form-grid">
+      <div class="form-group full"><label>Nome completo</label><input type="text" id="ev-nome" /></div>
+      <div class="form-group"><label>Usuário</label><input type="text" id="ev-user" /></div>
+      <div class="form-group"><label>Nova senha (deixe em branco para manter)</label><input type="password" id="ev-pass" placeholder="Nova senha..." /></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-vendedor')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarVendedor()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATABASE
+// ============================================================
+let DB = {
+  rifas: [],
+  participantes: [],
+  sellers: [],        // { id, nome, user, pass, assignments: [{rifaId, rangeStart, rangeEnd}] }
+  adminPass: 'admin123'
+};
+
+let SESSION = null; // { role: 'admin'|'seller', id: null|sellerId, nome, user }
+
+function save() { try { localStorage.setItem('numera_db_v2', JSON.stringify(DB)); } catch(e){} }
+function load() { try { const d = localStorage.getItem('numera_db_v2'); if(d) DB = JSON.parse(d); } catch(e){} }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+// ============================================================
+// AUTH
+// ============================================================
+function switchLoginTab(tab) {
+  document.querySelectorAll('.login-tab').forEach((t,i) => t.classList.toggle('active', (i===0 && tab==='admin') || (i===1 && tab==='seller')));
+  document.getElementById('login-admin').classList.toggle('active', tab==='admin');
+  document.getElementById('login-seller').classList.toggle('active', tab==='seller');
+}
+
+function doLogin(role) {
+  if (role === 'admin') {
+    const user = document.getElementById('admin-user').value.trim();
+    const pass = document.getElementById('admin-pass').value;
+    if (user === 'admin' && pass === DB.adminPass) {
+      SESSION = { role: 'admin', id: null, nome: 'Administrador', user: 'admin' };
+      startApp();
+    } else {
+      showLoginAlert('alert-login-admin', 'Usuário ou senha incorretos.');
+    }
+  } else {
+    const user = document.getElementById('seller-user').value.trim().toLowerCase();
+    const pass = document.getElementById('seller-pass').value;
+    const seller = DB.sellers.find(s => s.user.toLowerCase() === user && s.pass === pass);
+    if (seller) {
+      SESSION = { role: 'seller', id: seller.id, nome: seller.nome, user: seller.user };
+      startApp();
+    } else {
+      showLoginAlert('alert-login-seller', 'Usuário ou senha incorretos.');
+    }
+  }
+}
+
+function showLoginAlert(id, msg) {
+  const el = document.getElementById(id);
+  el.className = 'alert alert-danger show';
+  el.textContent = msg;
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function startApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-shell').classList.add('visible');
+
+  // Nav
+  const av = document.getElementById('nav-avatar');
+  av.textContent = SESSION.nome.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase();
+  av.className = 'nav-avatar ' + SESSION.role;
+  document.getElementById('nav-username').textContent = SESSION.nome;
+  const rb = document.getElementById('nav-role-badge');
+  rb.textContent = SESSION.role === 'admin' ? 'Admin' : 'Vendedor';
+  rb.className = 'nav-role-badge ' + SESSION.role;
+
+  // Admin-only sidebar
+  const adminSection = document.getElementById('sb-admin-section');
+  adminSection.style.display = SESSION.role === 'admin' ? '' : 'none';
+
+  // Admin-only buttons
+  document.getElementById('dash-nova-rifa-btn').style.display = SESSION.role === 'admin' ? '' : 'none';
+  document.getElementById('nova-rifa-btn2').style.display = SESSION.role === 'admin' ? '' : 'none';
+
+  goPage('dashboard');
+}
+
+function doLogout() {
+  SESSION = null;
+  document.getElementById('app-shell').classList.remove('visible');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('admin-user').value = '';
+  document.getElementById('admin-pass').value = '';
+  document.getElementById('seller-user').value = '';
+  document.getElementById('seller-pass').value = '';
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function goPage(p) {
+  // Guard seller from admin pages
+  if (SESSION && SESSION.role === 'seller' && (p === 'sorteio' || p === 'vendedores')) {
+    p = 'dashboard';
+  }
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+  const pg = document.getElementById('page-' + p);
+  const sb = document.getElementById('sb-' + p);
+  if (pg) pg.classList.add('active');
+  if (sb) sb.classList.add('active');
+  renderAll();
+}
+
+// ============================================================
+// MODALS
+// ============================================================
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  refreshSelects();
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function showAlert(id, msg, type='success') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'alert alert-' + type + ' show';
+  el.textContent = msg;
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ============================================================
+// RIFAS (admin only)
+// ============================================================
+function criarRifa() {
+  if (SESSION.role !== 'admin') return;
+  const premio = document.getElementById('rifa-premio').value.trim();
+  const valor = parseFloat(document.getElementById('rifa-valor').value);
+  const qtd = parseInt(document.getElementById('rifa-qtd').value);
+  const desc = document.getElementById('rifa-desc').value.trim();
+  if (!premio) return showAlert('alert-rifa', 'Informe o prêmio.', 'danger');
+  if (!valor || valor <= 0) return showAlert('alert-rifa', 'Informe um valor válido.', 'danger');
+  if (!qtd || qtd < 10) return showAlert('alert-rifa', 'Mínimo de 10 cotas.', 'danger');
+  const rifa = { id: uid(), premio, valor, qtd, desc, criadaEm: new Date().toLocaleDateString('pt-BR') };
+  DB.rifas.push(rifa);
+  save();
+  showAlert('alert-rifa', 'Rifa criada com sucesso!');
+  ['rifa-premio','rifa-valor','rifa-qtd','rifa-desc'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  setTimeout(() => closeModal('modal-nova-rifa'), 1200);
+  renderAll();
+}
+
+// ============================================================
+// VENDEDORES (admin only)
+// ============================================================
+function renderRangeOptions() {
+  const rifaId = document.getElementById('nv-rifa').value;
+  const section = document.getElementById('nv-range-section');
+  const container = document.getElementById('nv-range-options');
+  document.getElementById('nv-range-selected').value = '';
+  if (!rifaId) { section.style.display = 'none'; return; }
+  const rifa = DB.rifas.find(r => r.id === rifaId);
+  if (!rifa) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  // Build ranges of 100
+  const size = 100;
+  const ranges = [];
+  for (let s = 1; s <= rifa.qtd; s += size) {
+    const e = Math.min(s + size - 1, rifa.qtd);
+    ranges.push({ start: s, end: e });
+  }
+
+  // Check taken ranges
+  const takenRanges = [];
+  DB.sellers.forEach(seller => {
+    (seller.assignments || []).forEach(a => {
+      if (a.rifaId === rifaId) takenRanges.push({ start: a.rangeStart, end: a.rangeEnd, sellerNome: seller.nome });
+    });
+  });
+
+  container.innerHTML = ranges.map(r => {
+    const taken = takenRanges.find(t => t.start === r.start && t.end === r.end);
+    const cls = taken ? 'range-option taken' : 'range-option';
+    const onclick = taken ? '' : `onclick="selectRange(${r.start},${r.end},this)"`;
+    return `<div class="${cls}" ${onclick} data-start="${r.start}" data-end="${r.end}">
+      <div class="range-label">${r.start}–${r.end}</div>
+      <div class="range-sub">${r.end - r.start + 1} cotas</div>
+      ${taken ? `<div class="range-taken-by">Atribuído: ${taken.sellerNome}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function selectRange(start, end, el) {
+  document.querySelectorAll('#nv-range-options .range-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('nv-range-selected').value = `${start}-${end}`;
+}
+
+function criarVendedor() {
+  const nome = document.getElementById('nv-nome').value.trim();
+  const user = document.getElementById('nv-user').value.trim().toLowerCase();
+  const pass = document.getElementById('nv-pass').value;
+  const rifaId = document.getElementById('nv-rifa').value;
+  const rangeVal = document.getElementById('nv-range-selected').value;
+
+  if (!nome) return showAlert('alert-novo-vendedor', 'Informe o nome.', 'danger');
+  if (!user) return showAlert('alert-novo-vendedor', 'Informe o usuário.', 'danger');
+  if (pass.length < 4) return showAlert('alert-novo-vendedor', 'Senha deve ter ao menos 4 caracteres.', 'danger');
+  if (DB.sellers.find(s => s.user.toLowerCase() === user)) return showAlert('alert-novo-vendedor', 'Este usuário já existe.', 'danger');
+  if (user === 'admin') return showAlert('alert-novo-vendedor', 'Usuário reservado.', 'danger');
+
+  const seller = { id: uid(), nome, user, pass, assignments: [], criadoEm: new Date().toLocaleDateString('pt-BR') };
+
+  if (rifaId && rangeVal) {
+    const [start, end] = rangeVal.split('-').map(Number);
+    seller.assignments.push({ rifaId, rangeStart: start, rangeEnd: end });
+  }
+
+  DB.sellers.push(seller);
+  save();
+  showAlert('alert-novo-vendedor-ok', `Vendedor "${nome}" criado com sucesso!`);
+  ['nv-nome','nv-user','nv-pass'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('nv-rifa').value = '';
+  document.getElementById('nv-range-section').style.display = 'none';
+  document.getElementById('nv-range-selected').value = '';
+  setTimeout(() => closeModal('modal-novo-vendedor'), 1400);
+  renderAll();
+}
+
+function openEditVendedor(sellerId) {
+  const s = DB.sellers.find(x => x.id === sellerId);
+  if (!s) return;
+  document.getElementById('ev-id').value = s.id;
+  document.getElementById('ev-nome').value = s.nome;
+  document.getElementById('ev-user').value = s.user;
+  document.getElementById('ev-pass').value = '';
+  openModal('modal-edit-vendedor');
+}
+
+function salvarVendedor() {
+  const id = document.getElementById('ev-id').value;
+  const nome = document.getElementById('ev-nome').value.trim();
+  const user = document.getElementById('ev-user').value.trim().toLowerCase();
+  const pass = document.getElementById('ev-pass').value;
+  const s = DB.sellers.find(x => x.id === id);
+  if (!s) return;
+  if (!nome) return showAlert('alert-edit-vendedor', 'Informe o nome.', 'danger');
+  if (!user) return showAlert('alert-edit-vendedor', 'Informe o usuário.', 'danger');
+  if (DB.sellers.find(x => x.user.toLowerCase() === user && x.id !== id)) return showAlert('alert-edit-vendedor', 'Usuário já usado por outro vendedor.', 'danger');
+  s.nome = nome; s.user = user;
+  if (pass) { if (pass.length < 4) return showAlert('alert-edit-vendedor', 'Senha muito curta.', 'danger'); s.pass = pass; }
+  save();
+  showAlert('alert-edit-vendedor-ok', 'Dados atualizados!');
+  setTimeout(() => closeModal('modal-edit-vendedor'), 1200);
+  renderAll();
+}
+
+function removerVendedor(id) {
+  if (!confirm('Remover este vendedor? As cotas vendidas por ele serão mantidas.')) return;
+  DB.sellers = DB.sellers.filter(s => s.id !== id);
+  save(); renderAll();
+}
+
+function renderSellers() {
+  if (SESSION?.role !== 'admin') return;
+  const list = document.getElementById('sellers-list');
+  document.getElementById('badge-sellers').textContent = DB.sellers.length;
+  if (DB.sellers.length === 0) {
+    list.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><p>Nenhum vendedor cadastrado ainda.</p></div>';
+    return;
+  }
+  list.innerHTML = DB.sellers.map(s => {
+    const initials = s.nome.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase();
+    const myParts = DB.participantes.filter(p => p.sellerId === s.id);
+    const pago = myParts.filter(p => p.status === 'pago').length;
+    const assignments = (s.assignments||[]).map(a => {
+      const r = DB.rifas.find(x => x.id === a.rifaId);
+      return r ? `${r.premio}: ${a.rangeStart}–${a.rangeEnd}` : '';
+    }).filter(Boolean).join(', ');
+    return `<div class="seller-card">
+      <div class="seller-av">${initials}</div>
+      <div class="seller-info">
+        <div class="seller-name">${s.nome} <span class="tag tag-seller" style="margin-left:4px;">@${s.user}</span></div>
+        <div class="seller-meta">${myParts.length} vendas · ${pago} pagas${assignments ? ' · '+assignments : ''}</div>
+        <div class="seller-meta">Cadastrado em ${s.criadoEm||'–'}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="btn btn-ghost btn-sm" onclick="openEditVendedor('${s.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="removerVendedor('${s.id}')">Remover</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// PARTICIPANTES
+// ============================================================
+function onRifaSelectChange() {
+  const rifaId = document.getElementById('part-rifa-select').value;
+  const hint = document.getElementById('part-num-hint');
+  if (!rifaId) { hint.textContent = ''; return; }
+  const r = DB.rifas.find(x => x.id === rifaId);
+  if (!r) { hint.textContent = ''; return; }
+
+  if (SESSION?.role === 'seller') {
+    // Restrict to seller's range for this rifa
+    const seller = DB.sellers.find(s => s.id === SESSION.id);
+    const assignment = seller?.assignments?.find(a => a.rifaId === rifaId);
+    if (assignment) {
+      hint.textContent = `Sua faixa: ${assignment.rangeStart} a ${assignment.rangeEnd}`;
+    } else {
+      hint.textContent = `Disponível: 1 a ${r.qtd}`;
+    }
+  } else {
+    hint.textContent = `Disponível: 1 a ${r.qtd}`;
+  }
+}
+
+function addParticipante() {
+  const rifaId = document.getElementById('part-rifa-select').value;
+  const nome = document.getElementById('part-nome').value.trim();
+  const num = parseInt(document.getElementById('part-num').value);
+  const status = document.getElementById('part-status').value;
+  if (!rifaId) return showAlert('alert-part', 'Selecione uma rifa.', 'danger');
+  if (!nome) return showAlert('alert-part', 'Informe o nome.', 'danger');
+  if (isNaN(num) || num < 1) return showAlert('alert-part', 'Informe um número válido.', 'danger');
+  const rifa = DB.rifas.find(r => r.id === rifaId);
+  if (num > rifa.qtd) return showAlert('alert-part', `Número máximo: ${rifa.qtd}.`, 'danger');
+
+  // Seller range check
+  if (SESSION?.role === 'seller') {
+    const seller = DB.sellers.find(s => s.id === SESSION.id);
+    const assignment = seller?.assignments?.find(a => a.rifaId === rifaId);
+    if (assignment && (num < assignment.rangeStart || num > assignment.rangeEnd)) {
+      return showAlert('alert-part', `Sua faixa é ${assignment.rangeStart}–${assignment.rangeEnd}.`, 'danger');
+    }
+  }
+
+  const existe = DB.participantes.find(p => p.rifaId === rifaId && p.num === num);
+  if (existe) return showAlert('alert-part', `Cota #${num} já está ocupada.`, 'danger');
+
+  DB.participantes.push({
+    id: uid(), rifaId, nome, num, status,
+    addedEm: new Date().toLocaleDateString('pt-BR'),
+    sellerId: SESSION?.role === 'seller' ? SESSION.id : null
+  });
+  save();
+  showAlert('alert-part', 'Participante adicionado!');
+  document.getElementById('part-nome').value = '';
+  document.getElementById('part-num').value = '';
+  renderAll();
+}
+
+function toggleStatus(id) {
+  const p = DB.participantes.find(x => x.id === id);
+  if (!p) return;
+  // Sellers can only edit their own
+  if (SESSION?.role === 'seller' && p.sellerId !== SESSION.id) return;
+  p.status = p.status === 'pago' ? 'pendente' : 'pago';
+  save(); renderAll();
+}
+
+function removerParticipante(id) {
+  const p = DB.participantes.find(x => x.id === id);
+  if (!p) return;
+  if (SESSION?.role === 'seller' && p.sellerId !== SESSION.id) return;
+  if (!confirm('Remover participante?')) return;
+  DB.participantes = DB.participantes.filter(x => x.id !== id);
+  save(); renderAll();
+}
+
+// ============================================================
+// SORTEIO
+// ============================================================
+function realizarSorteio() {
+  const rifaId = document.getElementById('draw-rifa-select').value;
+  if (!rifaId) { alert('Selecione uma rifa.'); return; }
+  const elegiveis = DB.participantes.filter(p => p.rifaId === rifaId && p.status === 'pago');
+  if (elegiveis.length === 0) {
+    document.getElementById('draw-no-eligible').style.display = 'block';
+    document.getElementById('draw-winner').style.display = 'none';
+    document.getElementById('draw-num').textContent = '?';
+    return;
+  }
+  document.getElementById('draw-no-eligible').style.display = 'none';
+  let count = 0;
+  const interval = setInterval(() => {
+    const rand = elegiveis[Math.floor(Math.random() * elegiveis.length)];
+    document.getElementById('draw-num').textContent = String(rand.num).padStart(4, '0');
+    count++;
+    if (count > 20) {
+      clearInterval(interval);
+      const vencedor = elegiveis[Math.floor(Math.random() * elegiveis.length)];
+      document.getElementById('draw-num').textContent = String(vencedor.num).padStart(4, '0');
+      const initials = vencedor.nome.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase();
+      document.getElementById('winner-av').textContent = initials;
+      document.getElementById('winner-name').textContent = vencedor.nome;
+      const seller = DB.sellers.find(s => s.id === vencedor.sellerId);
+      document.getElementById('winner-detail').textContent = `Cota #${String(vencedor.num).padStart(4,'0')} · ${seller ? 'Vendedor: '+seller.nome : 'Admin'}`;
+      document.getElementById('draw-winner').style.display = 'block';
+    }
+  }, 80);
+}
+
+function updateDrawInfo() {
+  const rifaId = document.getElementById('draw-rifa-select').value;
+  const info = document.getElementById('draw-info');
+  if (!rifaId) { info.style.display = 'none'; return; }
+  const pagos = DB.participantes.filter(p => p.rifaId === rifaId && p.status === 'pago').length;
+  const pend = DB.participantes.filter(p => p.rifaId === rifaId && p.status === 'pendente').length;
+  document.getElementById('draw-eligible').textContent = pagos;
+  document.getElementById('draw-pending').textContent = pend;
+  info.style.display = 'block';
+  document.getElementById('draw-winner').style.display = 'none';
+  document.getElementById('draw-no-eligible').style.display = 'none';
+  document.getElementById('draw-num').textContent = '?';
+}
+
+// ============================================================
+// TICKET QR
+// ============================================================
+function verTicket(partId) {
+  const p = DB.participantes.find(x => x.id === partId);
+  const r = DB.rifas.find(x => x.id === p.rifaId);
+  const numStr = String(p.num).padStart(4, '0');
+  const qrData = `NUMERA|${r.id}|${p.id}|${numStr}|${p.nome}`;
+  document.getElementById('ticket-render').innerHTML = `
+    <div class="ticket" style="margin:16px auto;">
+      <div class="ticket-lbl">Número da sorte</div>
+      <div class="ticket-num">${numStr}</div>
+      <div class="ticket-meta">
+        <div><span>Participante</span><strong>${p.nome}</strong></div>
+        <div><span>Prêmio</span><strong>${r.premio}</strong></div>
+      </div>
+      <div class="ticket-divider"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="ticket-qr" id="qr-ticket-${partId}"></div>
+        <div class="${p.status==='pago'?'ticket-tag':'tag tag-pending'}">${p.status==='pago'?'✓ PAGO':'PENDENTE'}</div>
+      </div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:10px;font-family:'DM Mono',monospace;">${qrData}</div>
+    </div>`;
+  openModal('modal-ticket');
+  setTimeout(() => {
+    const el = document.getElementById(`qr-ticket-${partId}`);
+    if (el && window.QRCode) {
+      el.innerHTML = '';
+      new QRCode(el, { text: qrData, width: 52, height: 52, correctLevel: QRCode.CorrectLevel.L });
+    }
+  }, 100);
+}
+
+// ============================================================
+// RENDER FUNCTIONS
+// ============================================================
+function refreshSelects() {
+  // Filter rifas by seller assignment if seller
+  let rifas = DB.rifas;
+  if (SESSION?.role === 'seller') {
+    const seller = DB.sellers.find(s => s.id === SESSION.id);
+    const assignedIds = (seller?.assignments||[]).map(a => a.rifaId);
+    rifas = DB.rifas.filter(r => assignedIds.includes(r.id));
+  }
+
+  ['part-rifa-select','filter-rifa','ticket-rifa-select','draw-rifa-select','nv-rifa'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const prev = el.value;
+    const isFilter = id === 'filter-rifa';
+    const isNV = id === 'nv-rifa';
+    const allRifas = isNV ? DB.rifas : rifas;
+    el.innerHTML = isFilter ? '<option value="">Todas as rifas</option>' : '<option value="">Selecione uma rifa</option>';
+    allRifas.forEach(r => {
+      const op = document.createElement('option');
+      op.value = r.id; op.textContent = r.premio;
+      el.appendChild(op);
+    });
+    if (prev) el.value = prev;
+  });
+}
+
+function renderPart() {
+  const search = (document.getElementById('search-part')?.value||'').toLowerCase();
+  const filterRifa = document.getElementById('filter-rifa')?.value || '';
+  const filterStatus = document.getElementById('filter-status')?.value || '';
+  let list = DB.participantes;
+
+  // Sellers see only their own entries
+  if (SESSION?.role === 'seller') {
+    list = list.filter(p => p.sellerId === SESSION.id);
+  }
+
+  if (filterRifa) list = list.filter(p => p.rifaId === filterRifa);
+  if (filterStatus) list = list.filter(p => p.status === filterStatus);
+  if (search) list = list.filter(p => p.nome.toLowerCase().includes(search) || String(p.num).includes(search));
+  list = list.sort((a,b) => a.num - b.num);
+
+  const tbody = document.getElementById('part-tbody');
+  if (list.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);padding:32px;">Nenhum participante encontrado.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(p => {
+    const r = DB.rifas.find(x => x.id === p.rifaId);
+    const seller = DB.sellers.find(s => s.id === p.sellerId);
+    const numStr = String(p.num).padStart(4, '0');
+    const tagClass = p.status === 'pago' ? 'tag-paid' : 'tag-pending';
+    const canEdit = SESSION?.role === 'admin' || p.sellerId === SESSION?.id;
+    return `<tr>
+      <td><span class="num-badge">#${numStr}</span></td>
+      <td style="font-weight:600;color:var(--ink);">${p.nome}</td>
+      <td>${r ? r.premio : '–'}</td>
+      <td>${seller ? seller.nome : '<span style="color:var(--ink-soft)">Admin</span>'}</td>
+      <td><span class="tag ${tagClass}">${p.status==='pago'?'Pago':'Pendente'}</span></td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm" onclick="verTicket('${p.id}')">QR</button>
+        ${canEdit ? `<button class="btn btn-ghost btn-sm" onclick="toggleStatus('${p.id}')">${p.status==='pago'?'Pendente':'Confirmar'}</button>
+        <button class="btn btn-danger btn-sm" onclick="removerParticipante('${p.id}')">Remover</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderTickets() {
+  const rifaId = document.getElementById('ticket-rifa-select').value;
+  const container = document.getElementById('tickets-container');
+  if (!rifaId) {
+    container.innerHTML = '<div class="empty-state"><p>Selecione uma rifa para ver as cotas.</p></div>';
+    return;
+  }
+  let parts = DB.participantes.filter(p => p.rifaId === rifaId);
+  if (SESSION?.role === 'seller') parts = parts.filter(p => p.sellerId === SESSION.id);
+  parts = parts.sort((a,b) => a.num - b.num);
+  if (parts.length === 0) {
+    container.innerHTML = '<div class="empty-state"><p>Nenhum participante nesta rifa ainda.</p></div>';
+    return;
+  }
+  container.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">
+    ${parts.map(p => {
+      const numStr = String(p.num).padStart(4,'0');
+      const tagClass = p.status === 'pago' ? 'tag-paid' : 'tag-pending';
+      return `<div class="card" style="padding:16px;cursor:pointer;" onclick="verTicket('${p.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span class="num-badge" style="font-size:16px;">#${numStr}</span>
+          <span class="tag ${tagClass}">${p.status==='pago'?'Pago':'Pendente'}</span>
+        </div>
+        <div style="font-size:14px;font-weight:600;">${p.nome}</div>
+        <div style="font-size:12px;color:var(--ink-soft);margin-top:4px;">Clique para ver QR Code</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function renderRifas() {
+  const list = document.getElementById('rifas-list');
+  let rifas = DB.rifas;
+  if (SESSION?.role === 'seller') {
+    const seller = DB.sellers.find(s => s.id === SESSION.id);
+    const assignedIds = (seller?.assignments||[]).map(a => a.rifaId);
+    rifas = DB.rifas.filter(r => assignedIds.includes(r.id));
+  }
+  if (rifas.length === 0) {
+    list.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg><p>Nenhuma rifa disponível.</p></div>';
+    return;
+  }
+  list.innerHTML = rifas.map(r => {
+    const vendidas = DB.participantes.filter(p => p.rifaId === r.id).length;
+    const pagas = DB.participantes.filter(p => p.rifaId === r.id && p.status === 'pago').length;
+    const pct = Math.round((vendidas / r.qtd) * 100);
+    const total = (pagas * r.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    return `<div class="rifa-card" onclick="openRifaDetail('${r.id}')">
+      <div class="rc-prize">${r.premio}</div>
+      <div class="rc-meta">Criada em ${r.criadaEm} · R$ ${r.valor.toFixed(2)}/cota</div>
+      <div class="rc-bar-wrap"><div class="rc-bar" style="width:${pct}%"></div></div>
+      <div class="rc-stats"><span>${vendidas}/${r.qtd} cotas</span><span>${pct}%</span></div>
+      <div class="rc-value">${total} arrecadado</div>
+    </div>`;
+  }).join('');
+}
+
+function openRifaDetail(rifaId) {
+  document.getElementById('filter-rifa').value = rifaId;
+  goPage('participantes');
+}
+
+function renderDash() {
+  const totalRifas = DB.rifas.length;
+  document.getElementById('badge-rifas').textContent = totalRifas;
+
+  if (SESSION?.role === 'admin') {
+    document.getElementById('admin-dash').style.display = '';
+    document.getElementById('seller-dash').style.display = 'none';
+    document.getElementById('dash-title').textContent = 'Painel geral';
+
+    const totalVendidas = DB.participantes.length;
+    const totalPagos = DB.participantes.filter(p => p.status === 'pago').length;
+    let totalVal = 0;
+    DB.participantes.filter(p => p.status === 'pago').forEach(p => {
+      const r = DB.rifas.find(x => x.id === p.rifaId);
+      if (r) totalVal += r.valor;
+    });
+    document.getElementById('stat-rifas').textContent = totalRifas;
+    document.getElementById('stat-vendidas').textContent = totalVendidas;
+    document.getElementById('stat-pagos').textContent = totalPagos;
+    document.getElementById('stat-total').textContent = totalVal.toLocaleString('pt-BR', {style:'currency',currency:'BRL'});
+    document.getElementById('dash-sub').textContent = totalRifas > 0 ? `${totalRifas} rifa${totalRifas>1?'s':''} ativas · ${DB.sellers.length} vendedor${DB.sellers.length!==1?'es':''}` : 'Crie sua primeira rifa para começar';
+
+    const dl = document.getElementById('dash-rifas-list');
+    if (DB.rifas.length === 0) {
+      dl.innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24" style="width:48px;height:48px;stroke:var(--border);fill:none;stroke-width:1.5;margin:0 auto 16px;display:block;"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg><p>Nenhuma rifa criada ainda.</p></div>';
+    } else {
+      dl.innerHTML = `<div class="rifa-cards">${DB.rifas.slice().reverse().slice(0,4).map(r => {
+        const vendidas = DB.participantes.filter(p => p.rifaId === r.id).length;
+        const pagas = DB.participantes.filter(p => p.rifaId === r.id && p.status === 'pago').length;
+        const pct = Math.round((vendidas / r.qtd) * 100);
+        const total = (pagas * r.valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+        return `<div class="rifa-card" onclick="openRifaDetail('${r.id}')">
+          <div class="rc-prize">${r.premio}</div>
+          <div class="rc-meta">Criada em ${r.criadaEm} · R$ ${r.valor.toFixed(2)}/cota</div>
+          <div class="rc-bar-wrap"><div class="rc-bar" style="width:${pct}%"></div></div>
+          <div class="rc-stats"><span>${vendidas}/${r.qtd} cotas</span><span>${pct}%</span></div>
+          <div class="rc-value">${total} arrecadado</div>
+        </div>`;
+      }).join('')}</div>`;
+    }
+  } else {
+    // Seller dash
+    document.getElementById('admin-dash').style.display = 'none';
+    document.getElementById('seller-dash').style.display = '';
+    document.getElementById('dash-title').textContent = `Olá, ${SESSION.nome.split(' ')[0]}!`;
+
+    const seller = DB.sellers.find(s => s.id === SESSION.id);
+    const myParts = DB.participantes.filter(p => p.sellerId === SESSION.id);
+    const pagos = myParts.filter(p => p.status === 'pago').length;
+    const pendentes = myParts.filter(p => p.status === 'pendente').length;
+
+    document.getElementById('seller-stat-vendidas').textContent = myParts.length;
+    document.getElementById('seller-stat-pagos').textContent = pagos;
+    document.getElementById('seller-stat-pendentes').textContent = pendentes;
+    document.getElementById('dash-sub').textContent = `${myParts.length} cota${myParts.length!==1?'s':''} vendida${myParts.length!==1?'s':''}`;
+
+    // Quota boxes
+    const assignments = seller?.assignments || [];
+    let quotaHTML = '';
+    if (assignments.length === 0) {
+      quotaHTML = '<div style="background:var(--orange-bg);border:1.5px solid #f97316;border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;font-size:14px;color:var(--orange);">⚠️ Nenhuma faixa de cotas atribuída ainda. Fale com o administrador.</div>';
+    } else {
+      quotaHTML = assignments.map(a => {
+        const r = DB.rifas.find(x => x.id === a.rifaId);
+        const myInRange = myParts.filter(p => p.rifaId === a.rifaId && p.num >= a.rangeStart && p.num <= a.rangeEnd).length;
+        const totalRange = a.rangeEnd - a.rangeStart + 1;
+        return `<div class="seller-quota-box">
+          <div class="sqb-label">SUA FAIXA DE COTAS${r ? ' · ' + r.premio : ''}</div>
+          <div class="sqb-range">${a.rangeStart} – ${a.rangeEnd}</div>
+          <div class="sqb-info">${myInRange} de ${totalRange} cotas vendidas nesta faixa</div>
+        </div>`;
+      }).join('');
+    }
+    document.getElementById('seller-quota-display').innerHTML = quotaHTML;
+
+    // Recent sales
+    const recentSales = myParts.sort((a,b) => b.num - a.num).slice(0,5);
+    const salesEl = document.getElementById('seller-dash-sales');
+    if (recentSales.length === 0) {
+      salesEl.innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24"><path d="M3 9v-.5A1.5 1.5 0 014.5 7h15A1.5 1.5 0 0121 8.5V9a2 2 0 000 4v.5a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 13.5V13a2 2 0 000-4z"/></svg><p>Ainda sem vendas. Adicione participantes!</p></div>';
+    } else {
+      salesEl.innerHTML = `<div class="table-wrap"><table>
+        <thead><tr><th>Cota</th><th>Participante</th><th>Rifa</th><th>Status</th></tr></thead>
+        <tbody>${recentSales.map(p => {
+          const r = DB.rifas.find(x => x.id === p.rifaId);
+          const tagClass = p.status === 'pago' ? 'tag-paid' : 'tag-pending';
+          return `<tr>
+            <td><span class="num-badge">#${String(p.num).padStart(4,'0')}</span></td>
+            <td style="font-weight:600;color:var(--ink);">${p.nome}</td>
+            <td>${r ? r.premio : '–'}</td>
+            <td><span class="tag ${tagClass}">${p.status==='pago'?'Pago':'Pendente'}</span></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`;
+    }
+  }
+}
+
+function renderAll() {
+  if (!SESSION) return;
+  renderDash();
+  renderRifas();
+  renderPart();
+  renderTickets();
+  renderSellers();
+  refreshSelects();
+}
+
+document.getElementById('part-rifa-select').addEventListener('change', onRifaSelectChange);
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
+});
+
+load();
+// Show login screen
+document.getElementById('login-screen').style.display = 'flex';
+</script>
+</body>
+</html>
