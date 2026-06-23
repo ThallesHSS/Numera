@@ -1244,7 +1244,7 @@ function renderPart() {
       <td style="display:flex;gap:6px;flex-wrap:wrap;">
         <button class="btn btn-ghost btn-sm" onclick="verTicket('${p.id}')">QR</button>
         ${canEdit ? `<button class="btn btn-ghost btn-sm" onclick="toggleStatus('${p.id}')">${p.status==='pago'?'Pendente':'Confirmar'}</button>
-        <button class="btn btn-danger btn-sm" onclick="removerParticipante('${p.id}')">Remover</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="removerParticipanteComSenha('${p.id}')">Remover</button>` : ''}
       </td>
     </tr>`;
   }).join('');
@@ -1297,8 +1297,13 @@ function renderRifas() {
     const pagas = DB.participantes.filter(p => p.rifaId === r.id && p.status === 'pago').length;
     const pct = Math.round((vendidas / r.qtd) * 100);
     const total = (pagas * r.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    return `<div class="rifa-card" onclick="openRifaDetail('${r.id}')">
-      <div class="rc-prize">${r.premio}</div>
+    const isAdmin = SESSION?.role === 'admin';
+    return `<div class="rifa-card" onclick="openRifaDetail('${r.id}')" style="position:relative;">
+      ${isAdmin ? `<button class="btn btn-danger btn-sm" style="position:absolute;top:12px;right:12px;z-index:2;" onclick="apagarRifa('${r.id}',event)">
+        <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" fill="none" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        Apagar
+      </button>` : ''}
+      <div class="rc-prize" style="${isAdmin ? 'padding-right:80px;' : ''}">${r.premio}</div>
       <div class="rc-meta">Criada em ${r.criadaEm} · R$ ${r.valor.toFixed(2)}/cota</div>
       <div class="rc-bar-wrap"><div class="rc-bar" style="width:${pct}%"></div></div>
       <div class="rc-stats"><span>${vendidas}/${r.qtd} cotas</span><span>${pct}%</span></div>
@@ -1420,6 +1425,73 @@ function renderAll() {
   refreshSelects();
 }
 
+
+// ============================================================
+// MODAL DE CONFIRMAÇÃO COM SENHA
+// ============================================================
+let _pendingAction = null;
+
+function pedirSenha(titulo, msg, callback) {
+  _pendingAction = callback;
+  document.getElementById('confirm-titulo').textContent = titulo;
+  document.getElementById('confirm-msg').textContent = msg;
+  document.getElementById('confirm-senha-input').value = '';
+  document.getElementById('alert-confirm-senha').className = 'alert';
+  document.getElementById('alert-confirm-senha').textContent = '';
+  document.getElementById('modal-confirm-senha').classList.add('open');
+  setTimeout(() => document.getElementById('confirm-senha-input').focus(), 100);
+}
+
+function confirmarComSenha() {
+  const senha = document.getElementById('confirm-senha-input').value;
+  if (senha !== DB.adminPass) {
+    const el = document.getElementById('alert-confirm-senha');
+    el.className = 'alert alert-danger show';
+    el.textContent = 'Senha incorreta.';
+    document.getElementById('confirm-senha-input').value = '';
+    setTimeout(() => el.classList.remove('show'), 2500);
+    return;
+  }
+  closeModal('modal-confirm-senha');
+  if (_pendingAction) { _pendingAction(); _pendingAction = null; }
+}
+
+// ── Apagar RIFA (com todos os participantes vinculados) ──────────────────────
+function apagarRifa(rifaId, e) {
+  e.stopPropagation(); // não abre o detalhe da rifa
+  const r = DB.rifas.find(x => x.id === rifaId);
+  if (!r) return;
+  const nParts = DB.participantes.filter(p => p.rifaId === rifaId).length;
+  pedirSenha(
+    'Apagar rifa',
+    `Tem certeza que deseja apagar a rifa "${r.premio}"? Isso também removerá ${nParts} participante${nParts !== 1 ? 's' : ''} vinculado${nParts !== 1 ? 's' : ''}. Esta ação não pode ser desfeita.`,
+    () => {
+      DB.rifas = DB.rifas.filter(x => x.id !== rifaId);
+      DB.participantes = DB.participantes.filter(p => p.rifaId !== rifaId);
+      // Remove atribuições de vendedores que apontavam para essa rifa
+      DB.sellers.forEach(s => {
+        s.assignments = (s.assignments || []).filter(a => a.rifaId !== rifaId);
+      });
+      save(); renderAll();
+    }
+  );
+}
+
+// ── Apagar PARTICIPANTE individual ───────────────────────────────────────────
+function removerParticipanteComSenha(id) {
+  const p = DB.participantes.find(x => x.id === id);
+  if (!p) return;
+  if (SESSION?.role === 'seller' && p.sellerId !== SESSION.id) return;
+  pedirSenha(
+    'Remover participante',
+    `Remover "${p.nome}" (cota #${String(p.num).padStart(4,'0')})? Esta ação não pode ser desfeita.`,
+    () => {
+      DB.participantes = DB.participantes.filter(x => x.id !== id);
+      save(); renderAll();
+    }
+  );
+}
+
 document.getElementById('part-rifa-select').addEventListener('change', onRifaSelectChange);
 document.addEventListener('click', e => {
   if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
@@ -1428,5 +1500,32 @@ document.addEventListener('click', e => {
 // Show login screen
 document.getElementById('login-screen').style.display = 'flex';
 </script>
+
+<!-- MODAL: Confirmação com senha -->
+<div class="modal-overlay" id="modal-confirm-senha">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <div class="modal-title" id="confirm-titulo">Confirmar ação</div>
+      <button class="modal-close" onclick="closeModal('modal-confirm-senha')">×</button>
+    </div>
+    <div id="confirm-aviso" style="background:var(--danger-bg);border:1.5px solid #f09595;border-radius:var(--radius-sm);padding:12px 16px;font-size:13px;color:#791f1f;margin-bottom:18px;display:flex;gap:10px;align-items:flex-start;">
+      <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span id="confirm-msg">Esta ação não pode ser desfeita.</span>
+    </div>
+    <div class="form-group">
+      <label>Digite a senha do administrador para confirmar</label>
+      <input type="password" id="confirm-senha-input" placeholder="Senha admin..." onkeydown="if(event.key==='Enter')confirmarComSenha()" />
+      <div class="alert alert-danger" id="alert-confirm-senha" style="margin-top:8px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-confirm-senha')">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarComSenha()">
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        Excluir
+      </button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
