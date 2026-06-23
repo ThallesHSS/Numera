@@ -269,6 +269,10 @@
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo"><span></span> Númera</div>
+    <div style="background:#eaf0ff;border:1.5px solid #99b9ff;border-radius:10px;padding:10px 14px;margin-bottom:20px;font-size:12px;color:#2a47a8;display:flex;align-items:center;gap:8px;">
+      <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
+      <span><strong>Sincronizado na nuvem</strong> — admin e vendedores compartilham os mesmos dados em qualquer dispositivo.</span>
+    </div>
     <div class="login-tabs">
       <button class="login-tab active" onclick="switchLoginTab('admin')">Administrador</button>
       <button class="login-tab" onclick="switchLoginTab('seller')">Vendedor</button>
@@ -323,6 +327,7 @@
       <span class="nav-role-badge" id="nav-role-badge">–</span>
     </div>
     <button class="btn-logout" onclick="doLogout()">Sair</button>
+    <span id="sync-status" style="font-size:11px;font-weight:600;color:#1d9e75;min-width:80px;text-align:right;">● Online</span>
   </div>
 </nav>
 
@@ -646,9 +651,101 @@ let DB = {
 
 let SESSION = null; // { role: 'admin'|'seller', id: null|sellerId, nome, user }
 
-function save() { try { localStorage.setItem('numera_db_v2', JSON.stringify(DB)); } catch(e){} }
-function load() { try { const d = localStorage.getItem('numera_db_v2'); if(d) DB = JSON.parse(d); } catch(e){} }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+// ============================================================
+// CLOUD SYNC — dados compartilhados entre todos os dispositivos
+// ============================================================
+let _saveTimeout = null;
+let _syncInterval = null;
+let _lastSyncHash = '';
+
+function dbHash() {
+  return JSON.stringify(DB).length + '_' + (DB.participantes.length) + '_' + (DB.rifas.length);
+}
+
+async function save() {
+  // Debounce: espera 400ms antes de salvar para evitar muitas requisições
+  clearTimeout(_saveTimeout);
+  _saveTimeout = setTimeout(async () => {
+    try {
+      await window.storage.set('numera_db_v3', JSON.stringify(DB), true);
+      _lastSyncHash = dbHash();
+      showSyncStatus('saved');
+    } catch(e) {
+      console.warn('Erro ao salvar na nuvem:', e);
+      showSyncStatus('error');
+    }
+  }, 400);
+}
+
+async function load() {
+  try {
+    showSyncStatus('loading');
+    const result = await window.storage.get('numera_db_v3', true);
+    if (result && result.value) {
+      const parsed = JSON.parse(result.value);
+      DB = parsed;
+      _lastSyncHash = dbHash();
+    }
+    showSyncStatus('ok');
+  } catch(e) {
+    // Nenhum dado ainda — começa do zero
+    showSyncStatus('ok');
+  }
+}
+
+async function syncFromCloud() {
+  // Sincroniza silenciosamente se houve mudança na nuvem
+  try {
+    const result = await window.storage.get('numera_db_v3', true);
+    if (result && result.value) {
+      const parsed = JSON.parse(result.value);
+      const remoteHash = JSON.stringify(parsed).length + '_' + (parsed.participantes.length) + '_' + (parsed.rifas.length);
+      if (remoteHash !== _lastSyncHash) {
+        DB = parsed;
+        _lastSyncHash = remoteHash;
+        renderAll();
+        showSyncStatus('synced');
+      }
+    }
+  } catch(e) {}
+}
+
+function startAutoSync() {
+  if (_syncInterval) clearInterval(_syncInterval);
+  // Sincroniza a cada 5 segundos enquanto o app está aberto
+  _syncInterval = setInterval(syncFromCloud, 5000);
+}
+
+function stopAutoSync() {
+  if (_syncInterval) clearInterval(_syncInterval);
+  _syncInterval = null;
+}
+
+function showSyncStatus(status) {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  const icons = {
+    loading: '⟳ Carregando...',
+    saved:   '✓ Salvo',
+    synced:  '↻ Atualizado',
+    ok:      '● Online',
+    error:   '⚠ Erro ao salvar'
+  };
+  const colors = {
+    loading: '#6b7280',
+    saved:   '#1d9e75',
+    synced:  '#2a47a8',
+    ok:      '#1d9e75',
+    error:   '#e24b4a'
+  };
+  el.textContent = icons[status] || '';
+  el.style.color = colors[status] || '#6b7280';
+  if (status === 'saved' || status === 'synced') {
+    setTimeout(() => { if (el) { el.textContent = '● Online'; el.style.color = '#1d9e75'; } }, 2000);
+  }
+}
 
 // ============================================================
 // AUTH
@@ -659,7 +756,9 @@ function switchLoginTab(tab) {
   document.getElementById('login-seller').classList.toggle('active', tab==='seller');
 }
 
-function doLogin(role) {
+async function doLogin(role) {
+  // Garante dados mais recentes antes de autenticar
+  await load();
   if (role === 'admin') {
     const user = document.getElementById('admin-user').value.trim();
     const pass = document.getElementById('admin-pass').value;
@@ -711,9 +810,11 @@ function startApp() {
   document.getElementById('nova-rifa-btn2').style.display = SESSION.role === 'admin' ? '' : 'none';
 
   goPage('dashboard');
+  startAutoSync();
 }
 
 function doLogout() {
+  stopAutoSync();
   SESSION = null;
   document.getElementById('app-shell').classList.remove('visible');
   document.getElementById('login-screen').style.display = 'flex';
@@ -1324,7 +1425,6 @@ document.addEventListener('click', e => {
   if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
 });
 
-load();
 // Show login screen
 document.getElementById('login-screen').style.display = 'flex';
 </script>
