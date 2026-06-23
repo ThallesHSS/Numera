@@ -505,9 +505,9 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Cota</th><th>Participante</th><th>Rifa</th><th>Vendedor</th><th>Status</th><th>Ações</th></tr>
+              <tr><th>Cota</th><th>Participante</th><th>Telefone</th><th>Rifa</th><th>Vendedor</th><th>Status</th><th>Ações</th></tr>
             </thead>
-            <tbody id="part-tbody"><tr><td colspan="6" style="text-align:center;color:var(--ink-soft);padding:32px;">Nenhum participante cadastrado.</td></tr></tbody>
+            <tbody id="part-tbody"><tr><td colspan="7" style="text-align:center;color:var(--ink-soft);padding:32px;">Nenhum participante cadastrado.</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -613,6 +613,7 @@
     <div class="form-grid">
       <div class="form-group full"><label>Rifa</label><select id="part-rifa-select" onchange="onRifaSelectChange()"></select></div>
       <div class="form-group full"><label>Nome do participante</label><input type="text" id="part-nome" placeholder="Nome completo" /></div>
+      <div class="form-group full"><label>Telefone / WhatsApp</label><input type="tel" id="part-tel" placeholder="(99) 99999-9999" /></div>
       <div class="form-group">
         <label>Número da cota</label>
         <input type="number" id="part-num" placeholder="Ex: 42" />
@@ -1099,6 +1100,7 @@ function onRifaSelectChange() {
 function addParticipante() {
   const rifaId = document.getElementById('part-rifa-select').value;
   const nome = document.getElementById('part-nome').value.trim();
+  const tel = document.getElementById('part-tel').value.trim();
   const num = parseInt(document.getElementById('part-num').value);
   const status = document.getElementById('part-status').value;
   if (!rifaId) return showAlert('alert-part', 'Selecione uma rifa.', 'danger');
@@ -1120,13 +1122,14 @@ function addParticipante() {
   if (existe) return showAlert('alert-part', `Cota #${num} já está ocupada.`, 'danger');
 
   DB.participantes.push({
-    id: uid(), rifaId, nome, num, status,
+    id: uid(), rifaId, nome, tel, num, status,
     addedEm: new Date().toLocaleDateString('pt-BR'),
     sellerId: SESSION?.role === 'seller' ? SESSION.id : null
   });
   save();
   showAlert('alert-part', 'Participante adicionado!');
   document.getElementById('part-nome').value = '';
+  document.getElementById('part-tel').value = '';
   document.getElementById('part-num').value = '';
   renderAll();
 }
@@ -1203,7 +1206,7 @@ function verTicket(partId) {
   const p = DB.participantes.find(x => x.id === partId);
   const r = DB.rifas.find(x => x.id === p.rifaId);
   const numStr = String(p.num).padStart(4, '0');
-  const qrData = `NUMERA|${r.id}|${p.id}|${numStr}|${p.nome}`;
+  const qrData = `NUMERA|${r.id}|${p.id}|${numStr}|${p.nome}|${p.tel||''}`;
   document.getElementById('ticket-render').innerHTML = `
     <div class="ticket" style="margin:16px auto;">
       <div class="ticket-lbl">Número da sorte</div>
@@ -1212,6 +1215,7 @@ function verTicket(partId) {
         <div><span>Participante</span><strong>${p.nome}</strong></div>
         <div><span>Prêmio</span><strong>${r.premio}</strong></div>
       </div>
+      ${p.tel ? `<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:6px;">📱 ${p.tel}</div>` : ''}
       <div class="ticket-divider"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div class="ticket-qr" id="qr-ticket-${partId}"></div>
@@ -1271,12 +1275,12 @@ function renderPart() {
 
   if (filterRifa) list = list.filter(p => p.rifaId === filterRifa);
   if (filterStatus) list = list.filter(p => p.status === filterStatus);
-  if (search) list = list.filter(p => p.nome.toLowerCase().includes(search) || String(p.num).includes(search));
+  if (search) list = list.filter(p => p.nome.toLowerCase().includes(search) || String(p.num).includes(search) || (p.tel||'').includes(search));
   list = list.sort((a,b) => a.num - b.num);
 
   const tbody = document.getElementById('part-tbody');
   if (list.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);padding:32px;">Nenhum participante encontrado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--ink-soft);padding:32px;">Nenhum participante encontrado.</td></tr>';
     return;
   }
   tbody.innerHTML = list.map(p => {
@@ -1288,6 +1292,7 @@ function renderPart() {
     return `<tr>
       <td><span class="num-badge">#${numStr}</span></td>
       <td style="font-weight:600;color:var(--ink);">${p.nome}</td>
+      <td>${p.tel ? `<a href="https://wa.me/55${p.tel.replace(/\D/g,'')}" target="_blank" style="color:var(--success);font-family:'DM Mono',monospace;font-size:12px;text-decoration:none;">${p.tel}</a>` : '<span style="color:var(--ink-soft)">–</span>'}</td>
       <td>${r ? r.premio : '–'}</td>
       <td>${seller ? seller.nome : '<span style="color:var(--ink-soft)">Admin</span>'}</td>
       <td><span class="tag ${tagClass}">${p.status==='pago'?'Pago':'Pendente'}</span></td>
